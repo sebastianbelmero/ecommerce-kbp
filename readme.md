@@ -72,17 +72,24 @@ Script ini melakukan 4 tahap:
 |---|---|---|
 | 1. Build Frontend | `bun install && bun run build` | `frontend/dist/` |
 | 2. Publish Backend | `dotnet publish -c Release` | `publish/` |
-| 3. Apply Migrations | `dotnet ef database update` | Schema DB terupdate |
-| 4. Restart Services | Manual (systemd/nginx) | Server aktif |
+| 3. Copy Frontend | `cp -r dist/ publish/wwwroot/` | Frontend masuk ke backend |
+| 4. Apply Migrations | `dotnet ef database update` | Schema DB terupdate |
 
-Setelah build, jalankan manual:
+Jalankan hasil build (satu proses saja):
 ```bash
-# Backend
 cd publish && dotnet backend.dll
+```
 
-# Frontend (serve static files dari dist/)
-cd frontend && bun run preview
-# atau copy dist/ ke Nginx web root
+Backend serve API + frontend static files dari `wwwroot/`. Akses di `http://localhost:5000`.
+
+```
+publish/
+├── backend.dll       # ASP.NET Core (API + static files)
+├── .env              # Environment variables
+├── wwwroot/          # Hasil build frontend
+│   ├── index.html
+│   └── assets/       # JS, CSS, images
+└── ...               # DLL lainnya
 ```
 
 ### 1.6 Akun Default (Seed Data)

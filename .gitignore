@@ -1,0 +1,28 @@
+# ── Build Output ──────────────────────────────────
+publish/
+frontend/dist/
+backend/bin/
+backend/obj/
+backend/wwwroot/
+
+# ── Dependencies ─────────────────────────────────
+frontend/node_modules/
+
+# ── Environment Variables (contains secrets) ─────
+.env
+
+# ── IDE / Editor ─────────────────────────────────
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.sln.docstates
+
+# ── OS Files ─────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Logs ─────────────────────────────────────────
+*.log
+logs/

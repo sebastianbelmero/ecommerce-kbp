@@ -93,9 +93,18 @@ using (var scope = app.Services.CreateScope())
 
 // ─── Middleware Pipeline ──────────────────────────────────────────────────────
 app.UseCors("FrontendPolicy");
+
+// Serve frontend static files from wwwroot/ (production build)
+app.UseDefaultFiles();   // Serve index.html by default for "/"
+app.UseStaticFiles();    // Serve CSS, JS, images, etc.
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// SPA fallback: any route not matched by API or static files → index.html
+// This allows React Router to handle client-side routing
+app.MapFallbackToFile("index.html");
 
 app.Run();
 

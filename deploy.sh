@@ -2,6 +2,8 @@
 
 # ============================================================
 #  KBP eCommerce - Deployment Script
+#  Builds frontend & backend into a single deployable unit.
+#  The backend serves the frontend static files from wwwroot/.
 #  Usage: chmod +x deploy.sh && ./deploy.sh
 # ============================================================
 
@@ -22,9 +24,9 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 log()     { echo -e "${CYAN}>>> $1${NC}"; }
-success() { echo -e "${GREEN}✔  $1${NC}"; }
-warn()    { echo -e "${YELLOW}⚠  $1${NC}"; }
-error()   { echo -e "${RED}✘  $1${NC}"; exit 1; }
+success() { echo -e "${GREEN}[OK]  $1${NC}"; }
+warn()    { echo -e "${YELLOW}[!]  $1${NC}"; }
+error()   { echo -e "${RED}[X]  $1${NC}"; exit 1; }
 
 echo ""
 echo -e "${CYAN}======================================================${NC}"
@@ -37,7 +39,6 @@ log "Running pre-flight checks..."
 
 command -v bun      >/dev/null 2>&1 || error "bun is not installed. Install from https://bun.sh"
 command -v dotnet   >/dev/null 2>&1 || error "dotnet is not installed. Install from https://dotnet.microsoft.com"
-command -v dotnet   >/dev/null 2>&1 && dotnet ef --version >/dev/null 2>&1 || warn "dotnet-ef tool not found. Install with: dotnet tool install --global dotnet-ef"
 
 [ -d "$FRONTEND_DIR" ] || error "Frontend directory not found: $FRONTEND_DIR"
 [ -d "$BACKEND_DIR"  ] || error "Backend directory not found: $BACKEND_DIR"
@@ -47,12 +48,6 @@ if [ ! -f "$BACKEND_DIR/.env" ]; then
     warn "Make sure environment variables (DB_CONNECTION, JWT_SECRET, etc.) are set."
 else
     success "Backend .env file found."
-fi
-
-if [ ! -f "$FRONTEND_DIR/.env" ]; then
-    warn "Frontend .env file not found at $FRONTEND_DIR/.env"
-else
-    success "Frontend .env file found."
 fi
 
 success "Pre-flight checks passed."
@@ -66,7 +61,7 @@ bun install --frozen-lockfile
 success "Frontend dependencies installed."
 
 bun run build
-success "Frontend built successfully → $FRONTEND_OUT_DIR"
+success "Frontend built successfully -> $FRONTEND_OUT_DIR"
 echo ""
 
 # ── Step 2: Publish Backend ──────────────────────────────────
@@ -78,53 +73,50 @@ success "NuGet packages restored."
 
 rm -rf "$PUBLISH_DIR"
 dotnet publish -c Release -o "$PUBLISH_DIR" --nologo
-success "Backend published → $PUBLISH_DIR"
+success "Backend published -> $PUBLISH_DIR"
 echo ""
 
-# ── Step 3: Apply DB Migrations ──────────────────────────────
-log "[3/4] Applying Entity Framework Core database migrations..."
+# ── Step 3: Copy Frontend into Backend wwwroot ───────────────
+log "[3/4] Copying frontend build into backend wwwroot..."
+
+# Create wwwroot inside the publish directory and copy frontend dist into it
+mkdir -p "$PUBLISH_DIR/wwwroot"
+cp -r "$FRONTEND_OUT_DIR/." "$PUBLISH_DIR/wwwroot/"
+success "Frontend files copied to $PUBLISH_DIR/wwwroot/"
+echo ""
+
+# Also copy .env to publish directory so the backend can read it
+if [ -f "$BACKEND_DIR/.env" ]; then
+    cp "$BACKEND_DIR/.env" "$PUBLISH_DIR/.env"
+    success "Backend .env copied to publish directory."
+fi
+echo ""
+
+# ── Step 4: Apply DB Migrations ──────────────────────────────
+log "[4/4] Applying Entity Framework Core database migrations..."
 cd "$BACKEND_DIR"
 
 if command -v dotnet-ef >/dev/null 2>&1 || dotnet ef --version >/dev/null 2>&1; then
     dotnet ef database update
     success "Database migrations applied."
 else
-    warn "dotnet-ef not available — skipping migration step."
-    warn "Run manually: cd backend && dotnet ef database update"
+    warn "dotnet-ef not available -- skipping migration step."
+    warn "Migrations will be applied automatically on first backend startup."
 fi
-echo ""
-
-# ── Step 4: Restart Services ─────────────────────────────────
-log "[4/4] Restarting services..."
-
-# ── Option A: systemd (uncomment and adjust service names) ───
-# if systemctl is-active --quiet ecommerce-api.service; then
-#     sudo systemctl restart ecommerce-api.service
-#     success "Backend service restarted (systemd)."
-# else
-#     warn "ecommerce-api.service is not running. Start it with: sudo systemctl start ecommerce-api.service"
-# fi
-
-# ── Option B: Copy frontend dist to Nginx web root ───────────
-# NGINX_WEB_ROOT="/var/www/html"
-# if [ -d "$NGINX_WEB_ROOT" ]; then
-#     sudo cp -r "$FRONTEND_OUT_DIR/." "$NGINX_WEB_ROOT/"
-#     sudo systemctl reload nginx
-#     success "Frontend deployed to Nginx web root and reloaded."
-# fi
-
-# ── Option C: Run backend directly (dev / simple server) ─────
-warn "No service manager configured. To run manually:"
-echo -e "  Backend  → ${CYAN}cd $PUBLISH_DIR && dotnet backend.dll${NC}"
-echo -e "  Frontend → ${CYAN}cd $FRONTEND_DIR && bun run preview${NC}"
-echo -e "  (or serve $FRONTEND_OUT_DIR with Nginx/Apache)"
 echo ""
 
 # ── Done ─────────────────────────────────────────────────────
 echo -e "${GREEN}======================================================${NC}"
-echo -e "${GREEN}   Deployment completed successfully! 🚀              ${NC}"
+echo -e "${GREEN}   Deployment completed successfully!                 ${NC}"
 echo -e "${GREEN}======================================================${NC}"
 echo ""
-echo -e "  Frontend build : ${CYAN}$FRONTEND_OUT_DIR${NC}"
-echo -e "  Backend build  : ${CYAN}$PUBLISH_DIR${NC}"
+echo -e "  Published to : ${CYAN}$PUBLISH_DIR${NC}"
+echo -e "  Frontend     : ${CYAN}$PUBLISH_DIR/wwwroot/${NC}"
+echo -e "  Backend DLL  : ${CYAN}$PUBLISH_DIR/backend.dll${NC}"
+echo ""
+echo -e "  ${YELLOW}To run the application (single process):${NC}"
+echo -e "  ${CYAN}cd $PUBLISH_DIR && dotnet backend.dll${NC}"
+echo ""
+echo -e "  The backend will serve both the API and the frontend."
+echo -e "  Open ${CYAN}http://localhost:5000${NC} in your browser."
 echo ""

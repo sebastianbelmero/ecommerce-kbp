@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { adminApi, type AdminUser } from "../../api/admin";
 import { useAuth } from "../../contexts/AuthContext";
-import { Users, User, Shield, Search, CheckCircle, AlertTriangle } from "lucide-react";
+import { Users, User, Shield, CheckCircle, AlertTriangle } from "lucide-react";
 
 export default function AdminUsersPage() {
   const { user: currentUser } = useAuth();
@@ -76,7 +76,7 @@ export default function AdminUsersPage() {
       u.role.toLowerCase().includes(search.toLowerCase())
   );
 
-  const totalUsers  = users.filter((u) => u.role === "User").length;
+  const totalUsers = users.filter((u) => u.role === "User").length;
   const totalAdmins = users.filter((u) => u.role === "Admin").length;
 
   return (

@@ -114,3 +114,4 @@
 /home/ubuntu/kbp/backend/obj/Debug/net8.0/backend.genruntimeconfig.cache
 /home/ubuntu/kbp/backend/obj/Debug/net8.0/ref/backend.dll
 /home/ubuntu/kbp/backend/bin/Debug/net8.0/BCrypt.Net-Next.dll
+/home/ubuntu/kbp/backend/obj/Debug/net8.0/backend.sourcelink.json
